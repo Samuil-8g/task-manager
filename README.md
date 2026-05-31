@@ -3,47 +3,69 @@
 ## Как се компилира и стартира
 
 ```bash
-# Компилиране (от папката task-manager-cpp/)
+# Компилиране
 g++ -std=c++17 -Wall -o task_manager src/main.cpp
 
 # Стартиране
-./task_manager          # Linux / Mac
-task_manager.exe        # Windows
+./task_manager
 ```
+
+## Потребители за вход
+
+| Потребител | Роля   |
+|-----------|--------|
+| admin     | ADMIN  |
+| pesho     | MEMBER |
+| maria     | MEMBER |
 
 ## Функционалности
 
 | # | Функционалност | Статус |
 |---|---------------|--------|
 | 1 | CRUD проекти и задачи | ✅ |
-| 2 | Статуси с валиден преход | ✅ |
+| 2 | Статуси с валиден преход (Todo → In Progress → In Review → Done) | ✅ |
 | 3 | Назначаване на изпълнители | ✅ |
 | 4 | Приоритети и закъснели задачи | ✅ |
 | 5 | Тагове | ✅ |
 | 6 | Коментари и лог на промените | ✅ |
-| 7 | Зависимости (с проверка за цикъл) | ✅ |
+| 7 | Зависимости между задачи (с проверка за циклична зависимост) | ✅ |
 | 8 | Филтриране и търсене | ✅ |
 | 9 | Dashboard | ✅ |
+| 10 | Известия и напомняния | ✅ |
 
-## Git команди (минимум 5 commits)
+## Класова йерархия
 
-```bash
-git init
-git add .
-git commit -m "Add base class hierarchy: BaseEntity, User, Task, Project"
+```
+BaseEntity (абстрактен)
+├── User
+├── Tag
+├── Comment
+├── TaskDependency
+├── Project
+└── Task
+    └── RecurringTask
+```
 
-# (направи малка промяна и продължи)
-git commit -m "Add RecurringTask subclass"
-git commit -m "Add TaskDependency with cycle detection"
-git commit -m "Add TaskService with filter and dashboard"
-git commit -m "Add CLI menu in main.cpp"
+## Структура на проекта
 
-# Виж хешовете:
-git log --oneline
+```
+src/
+├── BaseEntity.h        ← абстрактен базов клас
+├── Enums.h             ← TaskStatus, Priority
+├── User.h              ← потребител
+├── Tag.h               ← таг
+├── Comment.h           ← коментар и лог на промените
+├── Task.h              ← основен клас задача
+├── RecurringTask.h     ← повтаряща се задача (наследява Task)
+├── Project.h           ← проект
+├── TaskDependency.h    ← зависимост между задачи
+├── TaskService.h       ← бизнес логика
+├── NotificationService.h ← известия и напомняния
+└── main.cpp            ← конзолно меню
 ```
 
 ## Бележка за промени спрямо чекпойнт 1
 
-Добавен е `ChangeLogEntry` (не е в диаграмата, но е логично следствие
-от изискването за лог на промените). `TaskService` е нов сервизен клас
-за да се раздели бизнес логиката от UI-a.
+- Добавен е `ChangeLogEntry` за проследяване на промените по задачите
+- Добавен е `TaskService` като сервизен слой за разделяне на бизнес логиката от UI-а
+- Добавен е `NotificationService` за известия при смяна на статус, нов коментар и закъснели задачи
