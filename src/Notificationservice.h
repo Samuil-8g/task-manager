@@ -9,7 +9,7 @@
 // Един notification обект
 struct Notification {
     std::string message;
-    std.string  targetUser; // за кого е
+    std::string  targetUser; // за кого е
     std::string createdAt;
  
     Notification(const std::string& msg, const std::string& user)
@@ -99,4 +99,3 @@ private:
         std::cout << "  [Известие] @" << user << ": " << msg << "\n";
     }
 };
- 
