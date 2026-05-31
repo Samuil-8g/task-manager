@@ -2,8 +2,10 @@
 #include <string>
 #include <limits>
 #include "TaskService.h"
+#include "NotificationService.h"
 
 TaskService service;
+NotificationService notifService;
 User* currentUser = nullptr;
 
 // ── Помощни функции ───────────────────────────────────────────────────────────
@@ -49,9 +51,9 @@ Task* pickTask(Project* p) {
 // ── Демо данни ────────────────────────────────────────────────────────────────
 
 void seedData() {
-    User* admin   = service.createUser("admin", "admin@demo.bg", "Иван Иванов",  "ADMIN");
-    User* pesho   = service.createUser("pesho", "pesho@demo.bg", "Петър Петров", "MEMBER");
-    User* maria   = service.createUser("maria", "maria@demo.bg", "Мария Колева", "MEMBER");
+    User* admin  = service.createUser("admin", "admin@demo.bg", "Иван Иванов",  "ADMIN");
+    User* pesho  = service.createUser("pesho", "pesho@demo.bg", "Петър Петров", "MEMBER");
+    User* maria  = service.createUser("maria", "maria@demo.bg", "Мария Колева", "MEMBER");
 
     Tag* bugTag  = service.createTag("bug",     "#FF5733");
     Tag* featTag = service.createTag("feature", "#33A1FF");
@@ -65,20 +67,24 @@ void seedData() {
                     "Схема, таблици, релации", "2025-08-01", Priority::CRITICAL);
     t1->addTag(featTag);
     t1->assignTo(admin, admin);
+    notifService.onTaskAssigned(t1, admin);
 
     Task* t2 = service.createTask(p1, "Имплементация на API",
                     "REST endpoints", "2025-09-01", Priority::HIGH);
     t2->addTag(featTag);
     t2->assignTo(pesho, admin);
+    notifService.onTaskAssigned(t2, pesho);
 
     Task* t3 = service.createTask(p1, "Поправи login бутона",
                     "Не работи на мобилни", "2025-06-01", Priority::MEDIUM);
     t3->addTag(bugTag);
     t3->addTag(uiTag);
     t3->assignTo(maria, admin);
+    notifService.onTaskAssigned(t3, maria);
     t3->addComment("Репродуциран на iPhone 14.", maria);
+    notifService.onCommentAdded(t3, maria);
 
-    service.addDependency(t1, t2); // t2 зависи от t1
+    service.addDependency(t1, t2);
 
     service.createRecurringTask(p1, "Седмичен статус репорт",
         "Изпращане до клиента", "2025-07-07", Priority::LOW,
@@ -89,6 +95,9 @@ void seedData() {
     Task* t4 = service.createTask(p2, "Mockup на главен екран",
                     "Figma дизайн", "2025-07-15", Priority::HIGH);
     t4->addTag(uiTag);
+
+    // Проверка за закъснели задачи при старт
+    notifService.checkOverdue(service.getAllProjects());
 }
 
 // ── Менюта ────────────────────────────────────────────────────────────────────
@@ -128,7 +137,12 @@ void changeStatus() {
     int idx = readInt(1, 5) - 1;
 
     bool ok = service.changeTaskStatus(t, statuses[idx], currentUser);
-    std::cout << (ok ? "Статусът е сменен!\n" : "Невалиден преход!\n") << "\n";
+    if (ok) {
+        notifService.onStatusChanged(t, currentUser);
+        std::cout << "Статусът е сменен!\n\n";
+    } else {
+        std::cout << "Невалиден преход!\n\n";
+    }
 }
 
 void addTask() {
@@ -163,6 +177,7 @@ void addComment() {
     std::string text = readLine();
     if (text.empty()) { std::cout << "Празен коментар.\n\n"; return; }
     t->addComment(text, currentUser);
+    notifService.onCommentAdded(t, currentUser);
     std::cout << "Коментарът е добавен.\n\n";
 }
 
@@ -224,6 +239,10 @@ void showLog() {
     std::cout << "\n";
 }
 
+void showNotifications() {
+    notifService.printNotifications(currentUser->getUsername());
+}
+
 void login() {
     std::cout << "=== Мениджър на задачи (C++) ===\n";
     while (true) {
@@ -253,22 +272,24 @@ int main() {
         std::cout << "7. Добави зависимост\n";
         std::cout << "8. Покажи лог на задача\n";
         std::cout << "9. Dashboard\n";
+        std::cout << "10. Известия\n";
         std::cout << "0. Изход\n";
         std::cout << "Избор: ";
-        int choice = readInt(0, 9);
+        int choice = readInt(0, 10);
         std::cout << "\n";
 
         switch (choice) {
-            case 1: showProjects();    break;
-            case 2: showTasksOfProject(); break;
-            case 3: changeStatus();    break;
-            case 4: addTask();         break;
-            case 5: addComment();      break;
-            case 6: filterTasks();     break;
-            case 7: addDependency();   break;
-            case 8: showLog();         break;
-            case 9: service.printDashboard(); break;
-            case 0: std::cout << "Довиждане!\n"; return 0;
+            case 1:  showProjects();           break;
+            case 2:  showTasksOfProject();     break;
+            case 3:  changeStatus();           break;
+            case 4:  addTask();                break;
+            case 5:  addComment();             break;
+            case 6:  filterTasks();            break;
+            case 7:  addDependency();          break;
+            case 8:  showLog();                break;
+            case 9:  service.printDashboard(); break;
+            case 10: showNotifications();      break;
+            case 0:  std::cout << "Довиждане!\n"; return 0;
         }
     }
 }
