@@ -2,14 +2,16 @@
 #include <string>
 #include <limits>
 #include "TaskService.h"
-#include "NotificationService.h"
+#include "Notificationservice.h"
 
+// Глобални обекти – достъпни от всички функции
 TaskService service;
 NotificationService notifService;
 User* currentUser = nullptr;
 
 // ── Помощни функции ───────────────────────────────────────────────────────────
 
+// Чете цяло число от конзолата в диапазона [min, max]
 int readInt(int min, int max) {
     int val;
     while (true) {
@@ -20,12 +22,14 @@ int readInt(int min, int max) {
     }
 }
 
+// Чете един ред текст от конзолата
 std::string readLine() {
     std::string line;
     std::getline(std::cin, line);
     return line;
 }
 
+// Показва списък с проекти и връща избрания от потребителя
 Project* pickProject() {
     const auto& all = service.getAllProjects();
     if (all.empty()) { std::cout << "Няма проекти.\n\n"; return nullptr; }
@@ -37,6 +41,7 @@ Project* pickProject() {
     return all[idx];
 }
 
+// Показва задачите на проект и връща избраната от потребителя
 Task* pickTask(Project* p) {
     const auto& tasks = p->getTasks();
     if (tasks.empty()) { std::cout << "Няма задачи.\n\n"; return nullptr; }
@@ -50,31 +55,37 @@ Task* pickTask(Project* p) {
 
 // ── Демо данни ────────────────────────────────────────────────────────────────
 
+// Създава начални данни за демонстрация на проекта
 void seedData() {
     User* admin  = service.createUser("admin", "admin@demo.bg", "Иван Иванов",  "ADMIN");
     User* pesho  = service.createUser("pesho", "pesho@demo.bg", "Петър Петров", "MEMBER");
     User* maria  = service.createUser("maria", "maria@demo.bg", "Мария Колева", "MEMBER");
 
+    // Създаване на тагове
     Tag* bugTag  = service.createTag("bug",     "#FF5733");
     Tag* featTag = service.createTag("feature", "#33A1FF");
     Tag* uiTag   = service.createTag("UI",      "#A133FF");
 
+    // Първи проект
     Project* p1 = service.createProject("Уеб платформа",
                     "Основен проект за онлайн платформа",
                     "2025-12-01", Priority::HIGH);
 
+    // Задача 1 – критична, назначена на admin
     Task* t1 = service.createTask(p1, "Дизайн на база данни",
                     "Схема, таблици, релации", "2025-08-01", Priority::CRITICAL);
     t1->addTag(featTag);
     t1->assignTo(admin, admin);
     notifService.onTaskAssigned(t1, admin);
 
+    // Задача 2 – зависи от t1, назначена на pesho
     Task* t2 = service.createTask(p1, "Имплементация на API",
                     "REST endpoints", "2025-09-01", Priority::HIGH);
     t2->addTag(featTag);
     t2->assignTo(pesho, admin);
     notifService.onTaskAssigned(t2, pesho);
 
+    // Задача 3 – бъг, назначена на maria, с коментар
     Task* t3 = service.createTask(p1, "Поправи login бутона",
                     "Не работи на мобилни", "2025-06-01", Priority::MEDIUM);
     t3->addTag(bugTag);
@@ -83,13 +94,16 @@ void seedData() {
     notifService.onTaskAssigned(t3, maria);
     t3->addComment("Репродуциран на iPhone 14.", maria);
     notifService.onCommentAdded(t3, maria);
-
+    
+    // t2 не може да започне преди t1 да завърши
     service.addDependency(t1, t2);
-
+    
+    // Повтаряща се задача – седмично
     service.createRecurringTask(p1, "Седмичен статус репорт",
         "Изпращане до клиента", "2025-07-07", Priority::LOW,
         RecurringTask::Recurrence::WEEKLY)->assignTo(admin, admin);
 
+    // Втори проект
     Project* p2 = service.createProject("Мобилно приложение",
                     "iOS и Android версия", "2026-03-01", Priority::MEDIUM);
     Task* t4 = service.createTask(p2, "Mockup на главен екран",
@@ -102,6 +116,7 @@ void seedData() {
 
 // ── Менюта ────────────────────────────────────────────────────────────────────
 
+// Показва всички проекти с техния прогрес и статус
 void showProjects() {
     const auto& all = service.getAllProjects();
     if (all.empty()) { std::cout << "Няма проекти.\n\n"; return; }
@@ -110,6 +125,7 @@ void showProjects() {
     std::cout << "\n";
 }
 
+// Показва всички задачи на избран проект
 void showTasksOfProject() {
     Project* p = pickProject();
     if (!p) return;
@@ -120,12 +136,14 @@ void showTasksOfProject() {
     std::cout << "\n";
 }
 
+// Сменя статуса на задача (само валидни преходи са позволени)
 void changeStatus() {
     Project* p = pickProject();
     if (!p) return;
     Task* t = pickTask(p);
     if (!t) return;
 
+    // Масив с всички възможни статуси
     TaskStatus statuses[] = {
         TaskStatus::TODO, TaskStatus::IN_PROGRESS,
         TaskStatus::IN_REVIEW, TaskStatus::DONE, TaskStatus::CANCELLED
@@ -145,6 +163,7 @@ void changeStatus() {
     }
 }
 
+// Добавя нова задача към избран проект
 void addTask() {
     Project* p = pickProject();
     if (!p) return;
@@ -156,6 +175,7 @@ void addTask() {
     std::cout << "Краен срок (YYYY-MM-DD, Enter = без): ";
     std::string deadline = readLine();
 
+    // Избор на приоритет
     Priority pvals[] = { Priority::CRITICAL, Priority::HIGH,
                          Priority::MEDIUM,   Priority::LOW };
     std::cout << "Приоритет:\n";
@@ -168,6 +188,7 @@ void addTask() {
     std::cout << "Задача \"" << t->getTitle() << "\" е създадена.\n\n";
 }
 
+// Добавя коментар към задача и изпраща известие на изпълнителя
 void addComment() {
     Project* p = pickProject();
     if (!p) return;
@@ -181,6 +202,7 @@ void addComment() {
     std::cout << "Коментарът е добавен.\n\n";
 }
 
+// Филтрира задачи по текст и/или статус
 void filterTasks() {
     Project* p = pickProject();
     if (!p) return;
@@ -199,6 +221,7 @@ void filterTasks() {
     std::cout << "Избор: ";
     int si = readInt(0, 5);
 
+    // Ако е избрано 0 – без филтър по статус
     bool filterS = (si > 0);
     TaskStatus fs = filterS ? statuses[si-1] : TaskStatus::TODO;
 
@@ -212,6 +235,7 @@ void filterTasks() {
     }
 }
 
+// Добавя зависимост между две задачи (blocker -> blocked)
 void addDependency() {
     Project* p = pickProject();
     if (!p) return;
@@ -225,6 +249,7 @@ void addDependency() {
     std::cout << (ok ? "Зависимостта е добавена.\n" : "Неуспех.\n") << "\n";
 }
 
+// Показва лога на промените и коментарите на задача
 void showLog() {
     Project* p = pickProject();
     if (!p) return;
@@ -239,10 +264,12 @@ void showLog() {
     std::cout << "\n";
 }
 
+// Показва известията на текущия потребител
 void showNotifications() {
     notifService.printNotifications(currentUser->getUsername());
 }
 
+// Иска потребителско име и задава currentUser
 void login() {
     std::cout << "=== Мениджър на задачи (C++) ===\n";
     while (true) {
@@ -261,6 +288,7 @@ int main() {
     seedData();
     login();
 
+    // Главен цикъл на менюто
     while (true) {
         std::cout << "-------- МЕНЮ --------\n";
         std::cout << "1. Покажи всички проекти\n";
@@ -278,6 +306,7 @@ int main() {
         int choice = readInt(0, 10);
         std::cout << "\n";
 
+        // Извиква съответната функция според избора
         switch (choice) {
             case 1:  showProjects();           break;
             case 2:  showTasksOfProject();     break;
